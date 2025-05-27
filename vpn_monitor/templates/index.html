@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">VPN Concentrator Monitor</h1>
+
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-2">Total VPNs</h2>
+                <p id="total-vpns" class="text-3xl font-bold text-blue-600">-</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-2">VPNs Up</h2>
+                <p id="vpns-up" class="text-3xl font-bold text-green-600">-</p>
+            </div>
+            <div class="bg-white rounded-lg shadow p-6">
+                <h2 class="text-xl font-semibold mb-2">Last Check</h2>
+                <p id="last-check" class="text-lg text-gray-600">-</p>
+            </div>
+        </div>
+
+        <!-- VPN Status Table -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-xl font-semibold">VPN Status Details</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                VPN Name
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="vpn-status-table" class="bg-white divide-y divide-gray-200">
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Refresh Button -->
+        <div class="mt-6 text-center">
+            <button id="refresh-btn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Refresh Status
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus() {
+            $('#refresh-btn').prop('disabled', true).text('Refreshing...');
+
+            $.get('/api/vpn-status')
+                .done(function(data) {
+
+                    $('#total-vpns').text(data.total_vpns);
+                    $('#vpns-up').text(data.vpns_up);
+                    $('#last-check').text(data.last_check);
+
+                    // Update status table
+                    const tableBody = $('#vpn-status-table');
+                    tableBody.empty();
+
+                    Object.entries(data.vpn_statuses).forEach(([name, info]) => {
+                        const statusClass = info.status === 'UP' ? 'text-green-600' : 'text-red-600';
+                        tableBody.append(`
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    ${name}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass} font-semibold">
+                                    ${info.status}
+                                </td>
+                            </tr>
+                        `);
+                    });
+                })
+                .fail(function(jqXHR, textStatus, errorThrown) {
+                    alert('Error fetching VPN status: ' + errorThrown);
+                })
+                .always(function() {
+                    $('#refresh-btn').prop('disabled', false).text('Refresh Status');
+                });
+        }
+
+        // Initial load
+        $(document).ready(function() {
+            updateStatus();
+
+            // Refresh button click handler
+            $('#refresh-btn').click(updateStatus);
+
+            // Auto refresh every 5 minutes
+            setInterval(updateStatus, 300000);
+        });
+    </script>
+</body>
+</html>
